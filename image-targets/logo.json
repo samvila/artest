@@ -1,0 +1,23 @@
+{
+  "type": "PLANAR",
+  "properties": {
+    "top": 23,
+    "left": 0,
+    "width": 558,
+    "height": 744,
+    "isRotated": false,
+    "originalWidth": 558,
+    "originalHeight": 810
+  },
+  "imagePath": "image-targets/logo_luminance.png",
+  "metadata": null,
+  "name": "logo",
+  "resources": {
+    "originalImage": "logo_original.png",
+    "croppedImage": "logo_cropped.png",
+    "thumbnailImage": "logo_thumbnail.png",
+    "luminanceImage": "logo_luminance.png"
+  },
+  "created": 1783471923285,
+  "updated": 1783471961648
+}
