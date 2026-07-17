@@ -1,1 +1,40 @@
-<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Empty Project</title><meta itemprop="name" content="Empty Project"><meta name="twitter:title" content="Empty Project"><meta property="og:title" content="Empty Project"><meta property="og:site_name" content="Empty Project"><meta name="description" content="Start with a blank project."><meta itemprop="description" content="Start with a blank project."><meta property="og:description" content="Start with a blank project."><meta name="twitter:description" content="Start with a blank project."><script crossorigin="anonymous" src="./external/runtime/runtime.js"></script><script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script></head><body><script src="bundle.js"></script></body></html>
+<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Empty Project</title><meta itemprop="name" content="Empty Project"><meta name="twitter:title" content="Empty Project"><meta property="og:title" content="Empty Project"><meta property="og:site_name" content="Empty Project"><meta name="description" content="Start with a blank project."><meta itemprop="description" content="Start with a blank project."><meta property="og:description" content="Start with a blank project."><meta name="twitter:description" content="Start with a blank project."><script crossorigin="anonymous" src="./external/runtime/runtime.js"></script><script>window.XR8_CAMERA_DEVICE_ID = null;
+(function () {
+  var PICKED = localStorage.getItem('xr8_camera_device_id');
+  if (PICKED) { window.XR8_CAMERA_DEVICE_ID = PICKED; }
+  function listCameras() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) { return; }
+    navigator.mediaDevices.enumerateDevices().then(function (devices) {
+      var cams = devices.filter(function (d) { return d.kind === 'videoinput'; });
+      if (!cams.length) { return; }
+      var panel = document.createElement('div');
+      panel.style.cssText = 'position:fixed;top:0;left:0;z-index:99999;background:rgba(0,0,0,.85);color:#fff;font:13px monospace;padding:10px;max-width:90vw;max-height:90vh;overflow:auto';
+      var title = document.createElement('div');
+      title.textContent = 'Select camera (index -> deviceId)';
+      panel.appendChild(title);
+      cams.forEach(function (cam, i) {
+        var row = document.createElement('div');
+        row.style.cssText = 'margin:4px 0;cursor:pointer';
+        var label = cam.label || ('camera ' + i);
+        row.textContent = i + ': ' + label + '  [' + cam.deviceId + ']';
+        row.onclick = function () {
+          window.XR8_CAMERA_DEVICE_ID = cam.deviceId;
+          localStorage.setItem('xr8_camera_device_id', cam.deviceId);
+          row.style.background = '#2a6';
+          Array.prototype.forEach.call(panel.children, function (c) { if (c !== row) c.style.background = ''; });
+        };
+        if (cam.deviceId && cam.deviceId === window.XR8_CAMERA_DEVICE_ID) { row.style.background = '#2a6'; }
+        panel.appendChild(row);
+      });
+      var clear = document.createElement('div');
+      clear.style.cssText = 'margin:8px 0 2px;cursor:pointer;color:#f88';
+      clear.textContent = 'Clear selection (use default FRONT/BACK)';
+      clear.onclick = function () { window.XR8_CAMERA_DEVICE_ID = null; localStorage.removeItem('xr8_camera_device_id'); panel.remove(); };
+      panel.appendChild(clear);
+      document.body.appendChild(panel);
+    });
+  }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') { listCameras(); }
+  else { window.addEventListener('DOMContentLoaded', listCameras); }
+})();
+</script><script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script></head><body><script src="bundle.js"></script></body></html>
