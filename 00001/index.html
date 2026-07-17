@@ -146,14 +146,14 @@
 </head>
 <body>
   
-  <!-- CRITICAL FIX: Overrides WebGL settings BEFORE the main bundle runs -->
+  <!-- Overrides WebGL settings BEFORE the main bundle runs -->
   <script>
     (function() {
       const originalGetContext = HTMLCanvasElement.prototype.getContext;
       HTMLCanvasElement.prototype.getContext = function(type, attributes) {
         if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') {
           attributes = attributes || {};
-          attributes.preserveDrawingBuffer = true; // Prevents the canvas from clearing data between frames
+          attributes.preserveDrawingBuffer = true; 
         }
         return originalGetContext.call(this, type, attributes);
       };
@@ -200,7 +200,6 @@
       // Small delay matching the flash apex to capture the visual output
       setTimeout(() => {
         try {
-          // Target the project canvas element 
           const targetCanvas = document.querySelector('canvas');
           
           if (!targetCanvas) {
@@ -209,17 +208,55 @@
             return;
           }
 
-          // Convert canvas state directly to data URL
-          capturedDataUrl = targetCanvas.toDataURL('image/png');
-          previewImage.src = capturedDataUrl;
+          // 3. Create a processing canvas to combine the frame + your logo asset
+          const processCanvas = document.createElement('canvas');
+          processCanvas.width = targetCanvas.width;
+          processCanvas.height = targetCanvas.height;
+          const ctx = processCanvas.getContext('2d');
 
-          // Convert to blob structure for native system file sharing
-          targetCanvas.toBlob((blob) => {
-            capturedBlob = blob;
-          }, 'image/png');
+          // Copy original WebGL frame onto our processing canvas
+          ctx.drawImage(targetCanvas, 0, 0);
 
-          // Show popup overlay
-          previewModal.style.display = 'flex';
+          // 4. Load the transparent logo image asset
+          const logoImg = new Image();
+          logoImg.src = '/assets/logo.png';
+          
+          logoImg.onload = () => {
+            // Define scaling/sizing properties for the logo watermark
+            // Makes the logo 15% of the total width of the captured screen
+            const logoWidth = processCanvas.width * 0.15; 
+            const scaleRatio = logoWidth / logoImg.width;
+            const logoHeight = logoImg.height * scaleRatio;
+
+            // Offset distance from the top and right edges
+            const padding = 20; 
+            const xPos = processCanvas.width - logoWidth - padding;
+            const yPos = padding;
+
+            // Draw the transparent logo into the upper right corner
+            ctx.drawImage(logoImg, xPos, yPos, logoWidth, logoHeight);
+
+            // 5. Package up the combined final image for viewing/sharing
+            capturedDataUrl = processCanvas.toDataURL('image/png');
+            previewImage.src = capturedDataUrl;
+
+            processCanvas.toBlob((blob) => {
+              capturedBlob = blob;
+            }, 'image/png');
+
+            // Show popup overlay
+            previewModal.style.display = 'flex';
+          };
+
+          logoImg.onerror = () => {
+            console.warn("Logo image asset failed to load. Displaying screenshot without watermark.");
+            
+            // Fallback: If logo path fails, generate screen output without it
+            capturedDataUrl = processCanvas.toDataURL('image/png');
+            previewImage.src = capturedDataUrl;
+            processCanvas.toBlob((blob) => { capturedBlob = blob; }, 'image/png');
+            previewModal.style.display = 'flex';
+          };
 
         } catch (err) {
           console.error("Failed to capture image:", err);
