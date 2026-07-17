@@ -146,6 +146,20 @@
 </head>
 <body>
   
+  <!-- CRITICAL FIX: Overrides WebGL settings BEFORE the main bundle runs -->
+  <script>
+    (function() {
+      const originalGetContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function(type, attributes) {
+        if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') {
+          attributes = attributes || {};
+          attributes.preserveDrawingBuffer = true; // Prevents the canvas from clearing data between frames
+        }
+        return originalGetContext.call(this, type, attributes);
+      };
+    })();
+  </script>
+
   <button id="photo-btn">Take Photo</button>
   <div id="flash-overlay"></div>
 
@@ -173,7 +187,7 @@
     let capturedBlob = null;
     let capturedDataUrl = null;
 
-    photoBtn.addEventListener('click', async () => {
+    photoBtn.addEventListener('click', () => {
       // 1. Hide UI elements
       photoBtn.style.display = 'none';
 
@@ -186,7 +200,7 @@
       // Small delay matching the flash apex to capture the visual output
       setTimeout(() => {
         try {
-          // Target the project canvas element (dynamic search)
+          // Target the project canvas element 
           const targetCanvas = document.querySelector('canvas');
           
           if (!targetCanvas) {
@@ -239,7 +253,6 @@
         return;
       }
 
-      // Format image package structure for Web Share architecture
       const shareFile = new File([capturedBlob], 'snapshot.png', { type: 'image/png' });
 
       if (navigator.canShare && navigator.canShare({ files: [shareFile] })) {
