@@ -1,1 +1,131 @@
-<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Empty Project</title><meta itemprop="name" content="Empty Project"><meta name="twitter:title" content="Empty Project"><meta property="og:title" content="Empty Project"><meta property="og:site_name" content="Empty Project"><meta name="description" content="Start with a blank project."><meta itemprop="description" content="Start with a blank project."><meta property="og:description" content="Start with a blank project."><meta name="twitter:description" content="Start with a blank project."><script crossorigin="anonymous" src="./external/runtime/runtime.js"></script><script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script></head><body><script src="bundle.js"></script></body></html>
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Empty Project</title>
+<meta itemprop="name" content="Empty Project">
+<meta name="twitter:title" content="Empty Project">
+<meta property="og:title" content="Empty Project">
+<meta property="og:site_name" content="Empty Project">
+<meta name="description" content="Start with a blank project.">
+<meta itemprop="description" content="Start with a blank project.">
+<meta property="og:description" content="Start with a blank project.">
+<meta name="twitter:description" content="Start with a blank project.">
+<script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
+<script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script>
+
+<style>
+  /* Base layout constraints */
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* Centered Bottom Button */
+  #photo-btn {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    padding: 12px 24px;
+    font-family: sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    color: #000;
+    background-color: #fff;
+    border: 2px solid #000;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.1s ease, background-color 0.2s;
+  }
+
+  #photo-btn:active {
+    transform: translateX(-50%) scale(0.95);
+    background-color: #eee;
+  }
+
+  /* Camera Flash Overlay */
+  #flash-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #fff;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10000;
+  }
+
+  /* Flash Animation Trigger class */
+  .flash-active {
+    animation: cameraFlash 0.4s ease-out;
+  }
+
+  @keyframes cameraFlash {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+  
+  <button id="photo-btn">Take Photo</button>
+  <div id="flash-overlay"></div>
+
+  <script src="bundle.js"></script>
+
+  <script>
+    document.getElementById('photo-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('photo-btn');
+      const flash = document.getElementById('flash-overlay');
+
+      // 1. Hide the button so it doesn't appear in the photo
+      btn.style.display = 'none';
+
+      // 2. Trigger the camera flash effect
+      flash.classList.add('flash-active');
+      
+      // Remove the flash class after animation finishes so it can be re-triggered
+      flash.addEventListener('animationend', () => {
+        flash.classList.remove('flash-active');
+      }, { once: true });
+
+      // 3. Capture the screen view
+      try {
+        // Create a canvas element matching the window size
+        const canvas = document.createElement('canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const ctx = canvas.getContext('2d');
+
+        // Note: Standard DOM elements aren't auto-drawn to canvas. 
+        // If bundle.js uses a 3D/WebGL context (like three.js/XR), change 'body' below to your specific <canvas> element.
+        ctx.drawImage(document.body, 0, 0); 
+
+        // 4. Automatically trigger a download of the image file
+        const imageURL = canvas.toDataURL('image/png');
+        const downloadLink = document.createElement('a');
+        downloadLink.href = imageURL;
+        downloadLink.download = 'screenshot.png';
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+
+      } catch (error) {
+        console.error("Screenshot capture failed: ", error);
+      } finally {
+        // 5. Always bring the button back into view
+        btn.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
