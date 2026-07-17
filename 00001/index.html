@@ -16,7 +16,6 @@
 <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script>
 
 <style>
-  /* Base layout constraints */
   body {
     margin: 0;
     padding: 0;
@@ -24,34 +23,33 @@
     position: relative;
     width: 100vw;
     height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
 
-  /* Centered Bottom Button */
+  /* Main Action Button */
   #photo-btn {
     position: absolute;
     bottom: 30px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 9999;
-    padding: 12px 24px;
-    font-family: sans-serif;
+    z-index: 999;
+    padding: 14px 28px;
     font-size: 16px;
     font-weight: bold;
     color: #000;
     background-color: #fff;
-    border: 2px solid #000;
+    border: none;
     border-radius: 50px;
     cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    transition: transform 0.1s ease, background-color 0.2s;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.1s ease;
   }
 
   #photo-btn:active {
     transform: translateX(-50%) scale(0.95);
-    background-color: #eee;
   }
 
-  /* Camera Flash Overlay */
+  /* Camera Flash */
   #flash-overlay {
     position: fixed;
     top: 0;
@@ -61,17 +59,88 @@
     background-color: #fff;
     opacity: 0;
     pointer-events: none;
-    z-index: 10000;
+    z-index: 1000;
   }
 
-  /* Flash Animation Trigger class */
   .flash-active {
-    animation: cameraFlash 0.4s ease-out;
+    animation: cameraFlash 0.35s ease-out;
   }
 
   @keyframes cameraFlash {
     0% { opacity: 1; }
     100% { opacity: 0; }
+  }
+
+  /* Photo Preview Modal Popup */
+  #preview-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.85);
+    z-index: 1001;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 20px;
+  }
+
+  #preview-image {
+    max-width: 90%;
+    max-height: 65vh;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    object-fit: contain;
+    background-color: #222;
+  }
+
+  .modal-buttons {
+    margin-top: 25px;
+    display: flex;
+    gap: 15px;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .modal-btn {
+    flex: 1;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.2s;
+  }
+
+  .btn-primary {
+    background-color: #007aff;
+    color: white;
+  }
+
+  .btn-primary:hover { background-color: #0063cc; }
+
+  .btn-secondary {
+    background-color: #3a3a3c;
+    color: white;
+  }
+
+  .btn-secondary:hover { background-color: #48484a; }
+
+  #close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 30px;
+    cursor: pointer;
+    line-height: 1;
   }
 </style>
 </head>
@@ -80,50 +149,113 @@
   <button id="photo-btn">Take Photo</button>
   <div id="flash-overlay"></div>
 
+  <!-- Popup Preview Modal -->
+  <div id="preview-modal">
+    <button id="close-btn">&times;</button>
+    <img id="preview-image" alt="Captured view">
+    <div class="modal-buttons">
+      <button class="modal-btn btn-secondary" id="save-btn">Save Image</button>
+      <button class="modal-btn btn-primary" id="share-btn">Share Photo</button>
+    </div>
+  </div>
+
   <script src="bundle.js"></script>
 
   <script>
-    document.getElementById('photo-btn').addEventListener('click', async () => {
-      const btn = document.getElementById('photo-btn');
-      const flash = document.getElementById('flash-overlay');
+    const photoBtn = document.getElementById('photo-btn');
+    const flashOverlay = document.getElementById('flash-overlay');
+    const previewModal = document.getElementById('preview-modal');
+    const previewImage = document.getElementById('preview-image');
+    const closeBtn = document.getElementById('close-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const shareBtn = document.getElementById('share-btn');
 
-      // 1. Hide the button so it doesn't appear in the photo
-      btn.style.display = 'none';
+    let capturedBlob = null;
+    let capturedDataUrl = null;
 
-      // 2. Trigger the camera flash effect
-      flash.classList.add('flash-active');
-      
-      // Remove the flash class after animation finishes so it can be re-triggered
-      flash.addEventListener('animationend', () => {
-        flash.classList.remove('flash-active');
+    photoBtn.addEventListener('click', async () => {
+      // 1. Hide UI elements
+      photoBtn.style.display = 'none';
+
+      // 2. Trigger camera flash visual animation
+      flashOverlay.classList.add('flash-active');
+      flashOverlay.addEventListener('animationend', () => {
+        flashOverlay.classList.remove('flash-active');
       }, { once: true });
 
-      // 3. Capture the screen view
-      try {
-        // Create a canvas element matching the window size
-        const canvas = document.createElement('canvas');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        const ctx = canvas.getContext('2d');
+      // Small delay matching the flash apex to capture the visual output
+      setTimeout(() => {
+        try {
+          // Target the project canvas element (dynamic search)
+          const targetCanvas = document.querySelector('canvas');
+          
+          if (!targetCanvas) {
+            alert("No active application canvas detected to take a picture of.");
+            photoBtn.style.display = 'block';
+            return;
+          }
 
-        // Note: Standard DOM elements aren't auto-drawn to canvas. 
-        // If bundle.js uses a 3D/WebGL context (like three.js/XR), change 'body' below to your specific <canvas> element.
-        ctx.drawImage(document.body, 0, 0); 
+          // Convert canvas state directly to data URL
+          capturedDataUrl = targetCanvas.toDataURL('image/png');
+          previewImage.src = capturedDataUrl;
 
-        // 4. Automatically trigger a download of the image file
-        const imageURL = canvas.toDataURL('image/png');
-        const downloadLink = document.createElement('a');
-        downloadLink.href = imageURL;
-        downloadLink.download = 'screenshot.png';
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        document.body.removeChild(downloadLink);
+          // Convert to blob structure for native system file sharing
+          targetCanvas.toBlob((blob) => {
+            capturedBlob = blob;
+          }, 'image/png');
 
-      } catch (error) {
-        console.error("Screenshot capture failed: ", error);
-      } finally {
-        // 5. Always bring the button back into view
-        btn.style.display = 'block';
+          // Show popup overlay
+          previewModal.style.display = 'flex';
+
+        } catch (err) {
+          console.error("Failed to capture image:", err);
+          alert("Could not process picture due to security context restrictions.");
+          photoBtn.style.display = 'block';
+        }
+      }, 50);
+    });
+
+    // Close preview popup window
+    closeBtn.addEventListener('click', () => {
+      previewModal.style.display = 'none';
+      photoBtn.style.display = 'block';
+    });
+
+    // Native platform download trigger
+    saveBtn.addEventListener('click', () => {
+      if (!capturedDataUrl) return;
+      const downloadLink = document.createElement('a');
+      downloadLink.href = capturedDataUrl;
+      downloadLink.download = 'snapshot.png';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    });
+
+    // Native platform web share protocol implementation
+    shareBtn.addEventListener('click', async () => {
+      if (!capturedBlob) {
+        alert("Image processing incomplete. Please try again.");
+        return;
+      }
+
+      // Format image package structure for Web Share architecture
+      const shareFile = new File([capturedBlob], 'snapshot.png', { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [shareFile] })) {
+        try {
+          await navigator.share({
+            files: [shareFile],
+            title: 'My Snapshot',
+            text: 'Check out this photograph!'
+          });
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.error('System share failed:', err);
+          }
+        }
+      } else {
+        alert("Native sharing is not supported by this platform or context. Try saving the image directly instead.");
       }
     });
   </script>
